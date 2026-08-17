@@ -51,4 +51,22 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv build
       - run: uv run --with twine twine check dist/*
+
+      # A version can already be on PyPI when it was published by hand, as 0.1.0 was.
+      # PyPI refuses to overwrite a released file, so publishing again is a hard error
+      # rather than a no-op. Check first and skip, so re-tagging is not destructive and
+      # the run stays green.
+      - name: Is this version already on PyPI?
+        id: released
+        run: |
+          VERSION="$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          if curl -sfo /dev/null "https://pypi.org/pypi/nfsn-cli/${VERSION}/json"; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "nfsn-cli ${VERSION} is already on PyPI; skipping upload."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+            echo "nfsn-cli ${VERSION} is not on PyPI; will upload."
+          fi
+
       - uses: pypa/gh-action-pypi-publish@release/v1
+        if: steps.released.outputs.already == 'false'
