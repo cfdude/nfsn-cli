@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Zone files can contain infrastructure detail worth keeping out of git by default.
+# Commit one deliberately if you want it version-controlled.
+zone.yaml
+*.zone.yaml
+dist/

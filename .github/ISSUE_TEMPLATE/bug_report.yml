@@ -1,0 +1,54 @@
+name: Bug report
+description: Something behaves incorrectly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this involves DNS records being created, removed or modified incorrectly,
+        the `listRRs` payload is the single most useful thing you can include.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, and what it did.
+      placeholder: |
+        $ nfsn dns add example.com MX "10 mail.example.com."
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: payload
+    attributes:
+      label: Relevant record state
+      description: >
+        Output of `nfsn dns list <domain> --json` for the affected records, before and
+        after if you have both. Redact anything you consider sensitive.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: nfsn-cli version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.13.1"
+    validations:
+      required: true
+  - type: checkboxes
+    id: no-secrets
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have not included my API key or any other credential in this report.
+          required: true

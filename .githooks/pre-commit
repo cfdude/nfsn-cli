@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Pre-commit: lint + format check + secret scan + full test suite.
+#
+# Install: scripts/install-hooks.sh
+#
+# BUDGET: must stay under ~35s. A slow hook is a hook people bypass.
+# Measured 2026-08-17 on this repo:
+#   ruff check        ~0.02s
+#   ruff format       ~0.02s
+#   gitleaks (staged) ~0.05s
+#   pytest             ~0.1s   (87 tests)
+# Anything slower belongs in CI. Trivy and Semgrep are CI-only for that reason.
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+run() { uv run "$@"; }
+
+echo "pre-commit: ruff check"
+run ruff check .
+
+echo "pre-commit: ruff format --check"
+run ruff format --check .
+
+# Secret scan over staged changes only. Credentials for this tool live in
+# ~/.config/nfsn/credentials and must never appear in the repo.
+if command -v gitleaks >/dev/null 2>&1; then
+    echo "pre-commit: gitleaks (staged)"
+    gitleaks protect --staged --redact --no-banner
+else
+    echo "pre-commit: gitleaks not installed, skipping secret scan (brew install gitleaks)"
+fi
+
+echo "pre-commit: pytest"
+run pytest -q
+
+echo "pre-commit: OK"

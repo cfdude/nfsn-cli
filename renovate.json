@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "labels": ["dependencies", "renovate"],
+  "schedule": ["before 6am on Monday"],
+  "packageRules": [
+    {
+      "description": "Auto-merge patch updates for all ecosystems",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group all GitHub Actions digest updates into one PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions digests",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group Python dependencies",
+      "matchManagers": ["uv"],
+      "groupName": "Python dependencies"
+    }
+  ]
+}

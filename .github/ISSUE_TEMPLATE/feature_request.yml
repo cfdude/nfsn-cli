@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest a capability or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The problem you are solving, not the solution you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like it to do
+    validations:
+      required: true
+  - type: input
+    id: api-member
+    attributes:
+      label: Related NFSN API member
+      description: >
+        If this maps to something on NFSN's API reference, name it (e.g. `dns/replaceRR`).
+        Leave blank if it is purely a CLI ergonomics request.
+      placeholder: "account/addSite"
