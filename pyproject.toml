@@ -37,6 +37,9 @@ nfsn = "nfsn_cli.cli:app"
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    # ruff is the linter AND the formatter. Declared here so CI and fresh clones get it
+    # rather than depending on it happening to be on PATH.
+    "ruff>=0.16",
 ]
 
 [build-system]
