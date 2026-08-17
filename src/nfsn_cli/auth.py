@@ -25,7 +25,25 @@ def make_salt(length: int = SALT_LENGTH) -> str:
 
 
 def _sha1(value: str) -> str:
-    # SHA-1 is mandated by the NFSN authentication scheme; it is not a choice we can make here.
+    """SHA-1 as required by NFSN's authentication scheme.
+
+    This is not a choice this library gets to make. NFSN's API/Introduction page specifies
+    SHA-1 for both the body hash and the header digest, and the server rejects anything else,
+    so substituting a stronger hash would simply make every request fail.
+
+    What limits the exposure:
+
+    * The API key is never transmitted -- it is an input to the digest, not a value in the
+      header, so a preimage attack on SHA-1 is what an attacker would need, not a collision.
+      SHA-1 collision attacks (SHAttered, 2017) do not translate into preimage attacks.
+    * Every request carries a fresh 16-character random salt and a Unix timestamp, and NFSN
+      rejects timestamps more than 5 seconds from its own clock while refusing to accept a
+      repeated (login, salt, timestamp) triple. That bounds any replay window to seconds.
+    * All traffic is HTTPS, so the digest is not observable in transit to begin with.
+
+    See SECURITY.md. If NFSN ever offers a stronger algorithm, this is the only place to change.
+    """
+    # nosemgrep: python.lang.security.insecure-hash-algorithms.insecure-hash-algorithm-sha1
     return hashlib.sha1(value.encode("utf-8")).hexdigest()
 
 
