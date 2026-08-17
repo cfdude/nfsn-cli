@@ -1,5 +1,9 @@
 # nfsn-cli
 
+[![PyPI](https://img.shields.io/pypi/v/nfsn-cli)](https://pypi.org/project/nfsn-cli/)
+[![Python](https://img.shields.io/pypi/pyversions/nfsn-cli)](https://pypi.org/project/nfsn-cli/)
+[![License](https://img.shields.io/pypi/l/nfsn-cli)](LICENSE)
+
 A modern command line interface and Python client for the
 [NearlyFreeSpeech.NET](https://www.nearlyfreespeech.net) API.
 

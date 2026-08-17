@@ -7,15 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Security
-
-- Documented why NFSN's authentication scheme forces SHA-1, what bounds the exposure, and
-  where to change it if NFSN ever offers a stronger algorithm. No behaviour change — the
-  hash is dictated by the server.
-
 ## [0.1.0] - 2026-08-17
 
-Initial release.
+Initial release. Published to PyPI as
+[`nfsn-cli`](https://pypi.org/project/nfsn-cli/).
 
 ### Added
 
@@ -38,6 +33,12 @@ Initial release.
 - Credential resolution from environment variables, `~/.config/nfsn/credentials`, or the
   legacy `~/.nfsn-api` JSON file used by NFSN's Perl library and `python-nfsn`.
 - Typed Python client (`nfsn_cli.Nfsn`) usable independently of the CLI.
+
+### Security
+
+- Documented why NFSN's authentication scheme forces SHA-1, what bounds the exposure, and
+  where to change it if NFSN ever offers a stronger algorithm. No behaviour change — the
+  hash is dictated by the server.
 
 [Unreleased]: https://github.com/cfdude/nfsn-cli/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/cfdude/nfsn-cli/releases/tag/v0.1.0
