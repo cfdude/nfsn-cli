@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Documented why NFSN's authentication scheme forces SHA-1, what bounds the exposure, and
+  where to change it if NFSN ever offers a stronger algorithm. No behaviour change — the
+  hash is dictated by the server.
+
 ## [0.1.0] - 2026-08-17
 
 Initial release.
