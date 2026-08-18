@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 # NFSN represents the zone apex as an empty name. Zone files may also spell it "@".
 APEX_ALIASES = frozenset({"", "@"})
+
+# An MX/SRV data value written the way the member interface takes it: "10 mail.example.com."
+PRIORITY_PREFIX = re.compile(r"^(\d+)\s+(\S.*)$")
 
 # NFSN tags each record with a scope. Records it manages itself cannot be edited via the
 # API, so the planner must never propose removing them.
@@ -42,6 +46,33 @@ class Record:
         object.__setattr__(self, "name", normalize_name(self.name))
         object.__setattr__(self, "type", self.type.strip().upper())
         object.__setattr__(self, "data", self.data.strip())
+        self._normalize_priority()
+
+    def _normalize_priority(self) -> None:
+        """Accept MX/SRV priority written either way, and store it one way.
+
+        NFSN's member interface takes ``10 mail.example.com.`` in a single Data field, so that
+        is the form people reach for, and it is what ``addRR`` wants. But ``listRRs`` and
+        ``removeRR`` use the split form. Without this, ``add`` and ``remove`` would disagree:
+        a record added with the joined form could not be removed with the same arguments,
+        because ``removeRR`` 404s on it.
+
+        Internally the split form always wins, so ``data`` is the bare target and ``aux`` the
+        priority. ``wire_data`` re-joins them for ``addRR``.
+        """
+        if self.type not in AUX_TYPES:
+            return
+        match = PRIORITY_PREFIX.match(self.data)
+        if match is None:
+            return
+        if self.aux is not None:
+            raise ValueError(
+                f"{self.type} record {self.name or '@'!r} sets the priority twice: "
+                f"aux={self.aux} and a {match.group(1)!r} prefix on data ({self.data!r}). "
+                f"Give the priority once -- either as aux, or as a prefix, not both."
+            )
+        object.__setattr__(self, "aux", int(match.group(1)))
+        object.__setattr__(self, "data", match.group(2).strip())
 
     @property
     def rrset(self) -> tuple[str, str]:

@@ -16,6 +16,38 @@ ADD = "add"
 REMOVE = "remove"
 
 
+class PlanError(RuntimeError):
+    """The requested end state is not a valid zone."""
+
+
+def _check_cname_exclusivity(records: list[Record]) -> None:
+    """A CNAME must be the only record at its name.
+
+    NFSN's own guidance: "When a CNAME record is used, it must be the only record present for
+    a given value of the Name field. If this rule is not observed, the results are undefined."
+    The API does not enforce it, so a zone file that puts a CNAME beside a TXT at the same name
+    applies cleanly and then behaves unpredictably in resolution.
+
+    This checks the zone as it would exist *after* the plan runs, not just the file, so it also
+    catches a CNAME colliding with a record already published that the file never mentions.
+    """
+    by_name: dict[str, list[Record]] = {}
+    for record in records:
+        by_name.setdefault(record.name, []).append(record)
+
+    problems = []
+    for name, group in sorted(by_name.items()):
+        types = {r.type for r in group}
+        if "CNAME" in types and len(types) > 1:
+            others = ", ".join(sorted(types - {"CNAME"}))
+            problems.append(f"  {name or '@'}: CNAME alongside {others}")
+    if problems:
+        raise PlanError(
+            "This would leave a CNAME sharing a name with other records, which NFSN "
+            "documents as undefined behaviour:\n" + "\n".join(problems)
+        )
+
+
 @dataclass(frozen=True)
 class Change:
     action: str
@@ -107,6 +139,12 @@ def build_plan(
     additions = [
         Change(ADD, record) for record in desired if record.identity not in actual_identities
     ]
+
+    # Validate the zone as it would exist after this plan runs, not merely the zone file.
+    removed = {change.record.identity for change in removals}
+    resulting = [r for r in actual if r.identity not in removed]
+    resulting.extend(change.record for change in additions)
+    _check_cname_exclusivity(resulting)
 
     # Removals precede additions so a changed record is deleted before being recreated.
     return Plan(

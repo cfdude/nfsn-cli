@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-17
+
+### Fixed
+
+- `nfsn dns add` and `nfsn dns remove` disagreed about how to write an MX or SRV priority, so
+  a record created with `add ... MX "10 mail.example.com."` could not be deleted with the same
+  arguments — `removeRR` matches on the split form and returned 404. Priority written either
+  way is now normalized on construction, so both verbs agree whichever form you type.
+- Passing a priority twice (`add ... "10 mail.example.com." --aux 10`) silently produced
+  `"10 10 mail.example.com."`, creating a malformed record. It is now rejected with an error
+  naming both values.
+
+### Added
+
+- `plan` and `apply` refuse to leave a CNAME sharing a name with any other record, which NFSN
+  documents as undefined behaviour and the API does not enforce. The check runs against the
+  zone as it would exist after the plan, so it also catches a collision with a published
+  record the zone file never mentions — and still allows a plan that removes the conflicting
+  record in the same run.
+
 ## [0.1.0] - 2026-08-17
 
 Initial release. Published to PyPI as
@@ -40,5 +60,6 @@ Initial release. Published to PyPI as
   where to change it if NFSN ever offers a stronger algorithm. No behaviour change — the
   hash is dictated by the server.
 
-[Unreleased]: https://github.com/cfdude/nfsn-cli/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/cfdude/nfsn-cli/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/cfdude/nfsn-cli/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/cfdude/nfsn-cli/releases/tag/v0.1.0

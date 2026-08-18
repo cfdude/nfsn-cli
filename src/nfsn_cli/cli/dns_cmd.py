@@ -18,7 +18,7 @@ from nfsn_cli.cli.common import (
     run,
 )
 from nfsn_cli.models import Record
-from nfsn_cli.plan import ADD, build_plan
+from nfsn_cli.plan import ADD, PlanError, build_plan
 from nfsn_cli.zonefile import ZoneFileError, dump_zone, load_zone
 
 app = typer.Typer(no_args_is_help=True, help="DNS records and zone properties.")
@@ -33,6 +33,15 @@ AuxOpt = Annotated[
     typer.Option("--aux", help="Priority for MX/SRV. Sent as a prefix on data, per NFSN."),
 ]
 YesOpt = Annotated[bool, typer.Option("--yes", "-y", help="Skip the confirmation prompt.")]
+
+
+def _record(name: str, record_type: str, data: str, **kwargs) -> Record:
+    """Build a Record from CLI input, reporting validation problems cleanly."""
+    try:
+        return Record(name=name, type=record_type, data=data, **kwargs)
+    except ValueError as exc:
+        fail(str(exc))
+        raise AssertionError("unreachable")  # pragma: no cover
 
 
 @app.command("list")
@@ -125,7 +134,7 @@ def add(
     credentials: CredentialsOption = None,
 ) -> None:
     """Add one resource record."""
-    record = Record(name=name, type=record_type, data=data, ttl=ttl, aux=aux)
+    record = _record(name, record_type, data, ttl=ttl, aux=aux)
     confirm_write(f"Add  {record.display_name(domain)}  {record.type}  {record.wire_data}", yes=yes)
     conn, nfsn = api(credentials)
     run(conn, lambda: nfsn.dns(domain).add_rr(record))
@@ -144,7 +153,7 @@ def remove(
     credentials: CredentialsOption = None,
 ) -> None:
     """Remove one resource record."""
-    record = Record(name=name, type=record_type, data=data, aux=aux)
+    record = _record(name, record_type, data, aux=aux)
     confirm_write(
         f"Remove  {record.display_name(domain)}  {record.type}  {record.wire_data}", yes=yes
     )
@@ -165,7 +174,7 @@ def replace(
     credentials: CredentialsOption = None,
 ) -> None:
     """Atomically replace every record at (name, type). A/AAAA/TXT only."""
-    record = Record(name=name, type=record_type, data=data, ttl=ttl)
+    record = _record(name, record_type, data, ttl=ttl)
     confirm_write(
         f"Replace all {record.type} at {record.display_name(domain)} with {record.data}", yes=yes
     )
@@ -249,7 +258,13 @@ def _plan_for(zone_file: Path, credentials: Path | None, prune: bool):
         raise AssertionError("unreachable")  # pragma: no cover
     conn, nfsn = api(credentials)
     actual = run(conn, lambda: nfsn.dns(domain).list_rrs())
-    return conn, nfsn, domain, build_plan(domain, desired, actual, prune=prune)
+    try:
+        result = build_plan(domain, desired, actual, prune=prune)
+    except PlanError as exc:
+        conn.close()
+        fail(str(exc))
+        raise AssertionError("unreachable")  # pragma: no cover
+    return conn, nfsn, domain, result
 
 
 @app.command()
