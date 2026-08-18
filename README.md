@@ -127,10 +127,29 @@ The consequences of getting this wrong are not subtle:
 - Send the joined form to `removeRR` and the deletion silently 404s, so a "replace" leaves
   the old record in place and adds a second one beside it.
 
-`nfsn-cli` handles the conversion for you: `Record.wire_data` produces the joined form for
-`addRR`, and `remove_rr` sends the split form. Zone files always use the split shape (`data`
-plus `aux`), matching what `export` gives you, and `load_zone` **rejects** an MX or SRV record
-with no `aux` rather than guessing a default.
+`nfsn-cli` handles the conversion for you. **Write the priority whichever way you like** — the
+joined form everyone reaches for, or an explicit `aux` — and it is normalized on the way in:
+
+```sh
+nfsn dns add example.com MX "10 mail.example.com."          # joined, as the web UI takes it
+nfsn dns add example.com MX mail.example.com. --aux 10      # split, as listRRs returns it
+```
+
+Both produce the same record, and `remove` accepts either too. Giving the priority twice is an
+error rather than a silently malformed `10 10 mail.example.com.`.
+
+Internally the split form wins: `data` is the bare target, `aux` the priority, and
+`Record.wire_data` re-joins them for `addRR`. `export` always emits the split shape, so
+round-trips are stable, and `load_zone` **rejects** an MX or SRV record with no priority at all
+rather than guessing a default.
+
+### CNAME exclusivity
+
+NFSN's guidance is that a CNAME "must be the only record present for a given value of the Name
+field. If this rule is not observed, the results are undefined." The API does not enforce it.
+`plan` and `apply` do — checked against the zone as it would exist *after* the plan, so a
+collision with an already-published record your zone file never mentions is caught too. A plan
+that removes the conflicting record in the same run is still allowed.
 
 `replaceRR` supports only **A, AAAA and TXT**, so it sidesteps the issue entirely — but that
 also means it cannot be used for MX or CNAME.

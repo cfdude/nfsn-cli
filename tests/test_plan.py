@@ -1,8 +1,11 @@
+import pytest
+
 from nfsn_cli.models import Record
-from nfsn_cli.plan import ADD, REMOVE, build_plan
+from nfsn_cli.plan import ADD, REMOVE, PlanError, build_plan
 
 DOMAIN = "example.com"
 
+# Written in the member-interface form; Record splits the priority into aux on construction.
 MX = Record(name="", type="MX", data="1 ASPMX.L.GOOGLE.com.", ttl=3600)
 SPF = Record(name="", type="TXT", data="v=spf1 include:_spf.google.com ~all", ttl=3600)
 DKIM = Record(name="tok._domainkey", type="CNAME", data="tok.dkim.amazonses.com.", ttl=3600)
@@ -40,12 +43,15 @@ def test_changed_data_removes_before_adding():
     assert result.changes[1].record == DKIM
 
 
-def test_wrong_record_type_is_replaced():
-    """A TXT holding the CNAME's target is a different rrset, so it needs --prune."""
+def test_wrong_record_type_needs_prune_and_is_refused_without_it():
+    """The real DKIM mistake: the records were created as TXT instead of CNAME.
+
+    A TXT is a different rrset, so without --prune it survives and the CNAME lands beside it.
+    That combination is undefined per NFSN, so the plan is refused rather than applied.
+    """
     as_txt = Record(name="tok._domainkey", type="TXT", data="tok.dkim.amazonses.com.")
-    without_prune = build_plan(DOMAIN, [DKIM], [as_txt])
-    assert without_prune.removals == []
-    assert as_txt in without_prune.unmanaged
+    with pytest.raises(PlanError, match="CNAME alongside TXT"):
+        build_plan(DOMAIN, [DKIM], [as_txt])
 
     with_prune = build_plan(DOMAIN, [DKIM], [as_txt], prune=True)
     assert [c.action for c in with_prune.changes] == [REMOVE, ADD]
@@ -70,4 +76,23 @@ def test_render_lists_removals_before_additions():
 
 
 def test_apex_name_variants_are_equivalent():
-    assert build_plan(DOMAIN, [Record(name="@", type="MX", data=MX.data)], [MX]).is_empty
+    at_apex = Record(name="@", type="MX", data=MX.data, aux=MX.aux)
+    assert build_plan(DOMAIN, [at_apex], [MX]).is_empty
+
+
+def test_cname_beside_an_existing_unmanaged_record_is_refused():
+    """The collision can come from a record the zone file never mentions."""
+    stray = Record(name="tok._domainkey", type="TXT", data="v=spf1 -all", scope="member")
+    with pytest.raises(PlanError, match="CNAME alongside TXT"):
+        build_plan(DOMAIN, [DKIM], [stray])
+
+
+def test_cname_alone_at_its_name_is_fine():
+    assert build_plan(DOMAIN, [DKIM], [DKIM, MX, SPF]).is_empty
+
+
+def test_removing_the_conflicting_record_in_the_same_plan_is_allowed():
+    """Validation runs on the post-apply zone, so a plan that fixes the clash is accepted."""
+    stray = Record(name="tok._domainkey", type="TXT", data="v=spf1 -all", scope="member")
+    result = build_plan(DOMAIN, [DKIM], [stray], prune=True)
+    assert [c.action for c in result.changes] == [REMOVE, ADD]
